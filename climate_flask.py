@@ -4,9 +4,12 @@ import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
+from sqlalchemy import between
 
 from flask import Flask, jsonify
 
+import datetime as dt
+from dateutil.relativedelta import relativedelta
 
 #################################################
 # Database Setup
@@ -39,40 +42,76 @@ def welcome():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
-        f"/api/v1.0/names<br/>"
-        f"/api/v1.0/passengers"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/[start]<br/>"
+        f"/api/v1.0/[start]/[end]<br/>"
+        f"NOTE: Enter [start] and [end] values as date strings in the %Y-%m-%d format"
     )
 
+@app.route("/api/v1.0/precipitation")
+def precipitation():
+    prcp_query = session.query(Measurement.date,Measurement.prcp).all()    
+    
+    prcp_dictionary_list = []
+    for arow in prcp_query:
+        prcp_dict = {}
+        prcp_dict["date"] = arow.date
+        prcp_dict["prcp"] = arow.prcp
+        prcp_dictionary_list.append(prcp_dict)
+    
+    return jsonify(prcp_dictionary_list)
 
-@app.route("/api/v1.0/names")
-def names():
-    """Return a list of all passenger names"""
-    # Query all passengers
-    results = session.query(Passenger.name).all()
+@app.route("/api/v1.0/stations")
+def stations():
+    station_query = session.query(Station.station).all()    
+    
+    station_list = []
+    for arow in station_query:
+        station_list.append(arow.station)
+    
+    return jsonify(station_list)
 
-    # Convert list of tuples into normal list
-    all_names = list(np.ravel(results))
+@app.route("/api/v1.0/tobs")
+def tobs():
+    latest_date_max = session.query(func.max(Measurement.date)).scalar()
+    # convert the latest date to a datetime object
+    latest_date = dt.datetime.strptime(latest_date_max, '%Y-%m-%d').date()
+    # use timedelta to find the date 1 year ago
+    year_ago = latest_date - dt.timedelta(days=365)
 
-    return jsonify(all_names)
+    temperature_query = session.query(Measurement.date, Measurement.tobs).\
+                        filter(between(Measurement.date, year_ago,latest_date))
+    
+    tobs_dictionary_list = []
+    for arow in temperature_query:
+        tobs_dict = {}
+        tobs_dict["date"] = arow.date
+        tobs_dict["tobs"] = arow.tobs
+        tobs_dictionary_list.append(tobs_dict)
+    
+    return jsonify(tobs_dictionary_list)
 
+@app.route("/api/v1.0/<start>")
+def start_date_normals(start):
+    latest_date_max = session.query(func.max(Measurement.date)).scalar()
+    # convert the latest date to a datetime object
+    latest_date = dt.datetime.strptime(latest_date_max, '%Y-%m-%d').date()
 
-@app.route("/api/v1.0/passengers")
-def passengers():
-    """Return a list of passenger data including the name, age, and sex of each passenger"""
-    # Query all passengers
-    results = session.query(Passenger).all()
+    tnormals_start_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start).filter(Measurement.date <= latest_date).all()
 
-    # Create a dictionary from the row data and append to a list of all_passengers
-    all_passengers = []
-    for passenger in results:
-        passenger_dict = {}
-        passenger_dict["name"] = passenger.name
-        passenger_dict["age"] = passenger.age
-        passenger_dict["sex"] = passenger.sex
-        all_passengers.append(passenger_dict)
+    print(tnormals_start_query)
+    return "Hello"
 
-    return jsonify(all_passengers)
+@app.route("/api/v1.0/<start>/<end>")
+def start_to_end_date_normals(start, end):
+    tnormals_start_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
 
+    print(tnormals_start_query)
+    return "Hello"
 
 if __name__ == '__main__':
     app.run(debug=True)
