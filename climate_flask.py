@@ -5,6 +5,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from sqlalchemy import between
+from sqlalchemy import and_
 
 from flask import Flask, jsonify
 
@@ -95,23 +96,24 @@ def tobs():
 
 @app.route("/api/v1.0/<start>")
 def start_date_normals(start):
+    # calculate the latest date
     latest_date_max = session.query(func.max(Measurement.date)).scalar()
     # convert the latest date to a datetime object
     latest_date = dt.datetime.strptime(latest_date_max, '%Y-%m-%d').date()
-
-    tnormals_start_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start).filter(Measurement.date <= latest_date).all()
-
-    print(tnormals_start_query)
-    return "Hello"
+    
+    tnormals_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter((Measurement.date >= start)).\
+        filter(Measurement.date <= latest_date).all()
+    
+    return jsonify(tnormals_query)
 
 @app.route("/api/v1.0/<start>/<end>")
 def start_to_end_date_normals(start, end):
     tnormals_start_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+    filter(Measurement.date >= start).\
+    filter(Measurement.date <= end).all()
 
-    print(tnormals_start_query)
-    return "Hello"
+    return jsonify(tnormals_start_query)
 
 if __name__ == '__main__':
     app.run(debug=True)
