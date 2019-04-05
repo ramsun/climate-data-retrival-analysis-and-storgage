@@ -132,4 +132,5 @@ def start_to_end_date_normals(start, end):
 
 # Main
 if __name__ == '__main__':
+    # turn on debug mode
     app.run(debug=True)
