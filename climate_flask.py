@@ -1,14 +1,21 @@
-import numpy as np
+'''
+This file will use ORM to make queries to a sqlite database and post the results locally
+using flask.
 
+'''
+
+# import dependencies
+#SQL alchemy dependencies
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from sqlalchemy import between
-from sqlalchemy import and_
 
+# flask dependencies
 from flask import Flask, jsonify
 
+# datetime dependencies
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 
@@ -37,7 +44,8 @@ app = Flask(__name__)
 #################################################
 # Flask Routes
 #################################################
-
+# Home route
+# All available routes are listed on the page
 @app.route("/")
 def welcome():
     """List all available api routes."""
@@ -51,6 +59,7 @@ def welcome():
         f"NOTE: Enter [start] and [end] values as date strings in the %Y-%m-%d format"
     )
 
+# Lists all the precipitation data from the database along with the associated dates
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     prcp_query = session.query(Measurement.date,Measurement.prcp).all()    
@@ -64,6 +73,7 @@ def precipitation():
     
     return jsonify(prcp_dictionary_list)
 
+# Lists all weather stations within the dataset
 @app.route("/api/v1.0/stations")
 def stations():
     station_query = session.query(Station.station).all()    
@@ -74,8 +84,10 @@ def stations():
     
     return jsonify(station_list)
 
+# Lists the temperatures for the last year of data along with the associated 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    # query for the latest date in the database
     latest_date_max = session.query(func.max(Measurement.date)).scalar()
     # convert the latest date to a datetime object
     latest_date = dt.datetime.strptime(latest_date_max, '%Y-%m-%d').date()
@@ -94,9 +106,10 @@ def tobs():
     
     return jsonify(tobs_dictionary_list)
 
+# List the normals data for for a given start date through the max date in the database
 @app.route("/api/v1.0/<start>")
 def start_date_normals(start):
-    # calculate the latest date
+    # query for the latest date in the database
     latest_date_max = session.query(func.max(Measurement.date)).scalar()
     # convert the latest date to a datetime object
     latest_date = dt.datetime.strptime(latest_date_max, '%Y-%m-%d').date()
@@ -107,13 +120,16 @@ def start_date_normals(start):
     
     return jsonify(tnormals_query)
 
+# List the normals data for for a given start date and end date given by the user
 @app.route("/api/v1.0/<start>/<end>")
 def start_to_end_date_normals(start, end):
+    
     tnormals_start_query = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-    filter(Measurement.date >= start).\
-    filter(Measurement.date <= end).all()
+        filter(Measurement.date >= start).\
+        filter(Measurement.date <= end).all()
 
     return jsonify(tnormals_start_query)
 
+# Main
 if __name__ == '__main__':
     app.run(debug=True)
