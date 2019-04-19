@@ -11,6 +11,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from sqlalchemy import between
+from sqlalchemy.pool import StaticPool
 
 # flask dependencies
 from flask import Flask, jsonify
@@ -22,7 +23,10 @@ from dateutil.relativedelta import relativedelta
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///hawaii.sqlite")
+# create the engine using the StaticPool library
+# this library allows multi-core processor computers to work properlly
+# particularlly, the check_same_thread argument must be set to False, otherwise a threading error will occur
+engine = create_engine('sqlite:///hawaii.sqlite', connect_args={'check_same_thread': False}, poolclass=StaticPool, echo=True)
 
 # reflect an existing database into a new model
 Base = automap_base()
